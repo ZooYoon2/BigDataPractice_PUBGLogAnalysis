@@ -15,6 +15,7 @@ def get_apikey(key_name, json_filename='secret.json'):
         raise FileNotFoundError
     with open(json_filepath) as (f):
         json_p = json.loads(f.read())
+
     try:
         value = json_p[key_name]
         return value
@@ -59,6 +60,7 @@ class PUBGAPI:
                 e = None
                 del e
 
+
     def Match(self,mapName):
         try:
             playerFile = input('플레이어 리스트 파일명을 입력하시오. : ')
@@ -87,6 +89,7 @@ class PUBGAPI:
                         matchId = match['id']
                         cr_match = self.pubg.match(matchId)
                         matchJson = cr_match.data
+
                         if matchJson['attributes']['matchType'] != "competitive":
                             print('게임타입 경쟁전 외')
                             continue

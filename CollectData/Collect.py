@@ -51,7 +51,6 @@ def Job(select):
             PUBGAPI().option("LeaveVehicle").start()
     else:
         pass
-    
 def main():
     while True:
         Choi = Menu()
