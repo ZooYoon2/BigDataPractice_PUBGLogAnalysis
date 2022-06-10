@@ -8,10 +8,9 @@ def Menu():
     select = -1
     print("배틀그라운드 API를 이용한 데이터 수집 툴")
     print("1.리더 보드 갱신")
-    print("2.매칭정보 가져오기")
-    print("3.매치 게임 요소 가져오기")
-    print("4.매치 위치 정보 가져오기")
-    print("5.매치 교전 정보 가져오기")
+    print("2.플레이어 매칭정보 가져오기")
+    print("3.플레이어 정보 가져오기")
+    print("4.매치 데이터 가져오기")
     select = int(input('====================> 입력 : '))
     return select
 
@@ -22,8 +21,11 @@ def Job(select):
         limitRank = int(input("검색할 최대 등수 ... ")) #등수제한(요청 리미트 때문에 양이 많을수록 이후 조회가 오래걸릴수 있음)
         PUBGAPI().LeaderBoard(gamemode,limitRank)
     elif(select==2):#매칭정보 갱신
-        PUBGAPI().Match()
+        mapName = ['Baltic_Main','Desert_Main']
+        PUBGAPI().Match(mapName)
     elif(select==3):
+        PUBGAPI().player()
+    elif(select==4):
         print("매치 게임 요소 가져오기")
         print("1.매치 자기장 정보")
         print("2.매치 비행기 정보")
@@ -47,11 +49,8 @@ def Job(select):
             PUBGAPI().option("RideVehicle").start()
         elif(select==7):
             PUBGAPI().option("LeaveVehicle").start()
-    elif(select==4):
-        df = pd.read_json("Matches.json")
-        print(df)
-        
-
+    else:
+        pass
 def main():
     while True:
         Choi = Menu()

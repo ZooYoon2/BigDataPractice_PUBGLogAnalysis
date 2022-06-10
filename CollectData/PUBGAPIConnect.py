@@ -15,10 +15,9 @@ def get_apikey(key_name, json_filename='secret.json'):
         raise FileNotFoundError
     with open(json_filepath) as (f):
         json_p = json.loads(f.read())
-        print('json_p:  ', json_p)
+
     try:
         value = json_p[key_name]
-        print(value)
         return value
     except KeyError:
         error_msg = 'ERROR: Unvalid Key'
@@ -52,11 +51,8 @@ class PUBGAPI:
             df = df.loc[1:limitRank]
             df.head(10)
             saveFile = input('저장할 제목을 입력하시오. : ')
-            file = open(saveFile, 'w')
-            result = df.to_json()
-            parsed = json.loads(result)
-            json.dump(parsed, file)
-            file.close()
+            df.to_json(saveFile, orient='records')
+            print('저장 완료')
         except requests.exceptions.HTTPError as e:
             try:
                 print('API request Error Code : {}'.format(e))
@@ -64,7 +60,8 @@ class PUBGAPI:
                 e = None
                 del e
 
-    def Match(self):
+
+    def Match(self,mapName):
         try:
             playerFile = input('플레이어 리스트 파일명을 입력하시오. : ')
             df_Player = pd.read_json(playerFile)
@@ -92,6 +89,16 @@ class PUBGAPI:
                         matchId = match['id']
                         cr_match = self.pubg.match(matchId)
                         matchJson = cr_match.data
+
+                        if matchJson['attributes']['matchType'] != "competitive":
+                            print('게임타입 경쟁전 외')
+                            continue
+                        if matchJson['attributes']['gameMode'] != "squad":
+                            print('게임모드 스쿼드 외')
+                            continue
+                        if not (matchJson['attributes']['mapName'] in mapName):
+                            print('맵 설정 외')
+                            continue
                         del matchJson['relationships']
                         del matchJson['links']
                         df_temp = pd.json_normalize(matchJson)
@@ -114,7 +121,7 @@ class PUBGAPI:
                             del e
 
                 pcnt += 1
-                print('{}명 플레이어 중 {}명 완료 // 추가된 매치 : {} // 총 매치 : {}'.format(topcnt, pcnt, cnt, tocnt))
+                print('{0}명 플레이어 중 {1}명 완료 // 추가된 매치 : {2} // 총 매치 : {3}'.format(topcnt, pcnt, cnt, tocnt))
 
             cnt_df_before = len(df_Matches)
             df_Matches = df_Matches.drop_duplicates()
@@ -123,11 +130,66 @@ class PUBGAPI:
             df_Matches.head(10)
             print('{}개의 매치중 중복 제거 {}개, 총 매치 갯수 {}', cnt_df_before, cnt_df_before - cnt_df_after, cnt_df_after)
             saveFile = input('저장할 제목을 입력하시오. : ')
-            file = open(saveFile, 'w')
-            result = df_Matches.to_json()
-            parsed = json.loads(result)
-            json.dump(parsed, file)
-            file.close()
+            df_Matches.to_json(saveFile, orient='records')
+            print('저장 완료')
+
+    def player(self):
+        try:
+            playerFile = input('매치 파일명을 입력하시오. : ')
+            df_Matches = pd.read_json(playerFile)
+        except FileNotFoundError:
+            print('매치 파일이 없습니다.')
+            return
+        cnt = 0
+        tocnt = df_Matches['id'].count()
+        df = pd.DataFrame({'playerName':object,  'avgRank':float,  'kda':float,  'damageDealt':float ,'dBNOs':float}, index=[0])
+        for matchId in df_Matches['id']:
+            try:
+                cr_match = self.pubg.match(matchId)
+                telemetry = cr_match.get_telemetry()
+                players = telemetry.players()
+                for name,id in players.items():
+                    print(name,id)
+                    #ID로부터 플레이어 정보 가져오기
+                    seasonId = "division.bro.official.pc-2018-16"
+                    url_of_playerInfo = 'https://api.pubg.com/shards/kakao/players/{}/seasons/{}/ranked'.format(id,seasonId)
+                    response = requests.get(url_of_playerInfo, headers=(self.header))
+                    if response.status_code == 404:
+                            print("사용자 이름 변경 혹은 삭제로 인한 오류")
+                            continue
+                    while response.status_code != 200:
+                        time.sleep(3)
+                        response = requests.get(url_of_playerInfo, headers=(self.header))
+                    playerInfo = response.json()
+                    try:
+                        playerInfo = playerInfo['data']['attributes']['rankedGameModeStats']["squad"]
+                        df = df.append({'playerName':name, 'avgRank':playerInfo['avgRank'],  'kda':playerInfo['kda'],
+                                              'damageDealt':playerInfo['damageDealt'],'dBNOs':playerInfo['dBNOs']}, ignore_index=True)
+                    except KeyError as e:
+                        print(e,"기록 없음")     
+                cnt += 1
+                print('총 {} 개 매치 중 {} 개 완료'.format(tocnt, cnt))
+            except requests.exceptions.HTTPError as e:
+                try:
+                    print('API request Error Code : {}'.format(e))
+                finally:
+                    e = None
+                    del e
+            except KeyError as e:
+                try:
+                    print('KeyError Error Code : {}'.format(e))
+                finally:
+                    e = None
+                    del e
+            #except:
+                #print('Other Error')
+                #ecnt += 1
+        df = df.drop_duplicates()
+        df = df.reset_index(drop=True)
+        df.head(10)
+        saveFile = input('저장할 제목을 입력하시오. : ')
+        result = df.to_json(saveFile, orient='records')
+        print('저장 완료')
 
     def option(self, func: string):
         if func.lower() in ('circlepos', 'circleposition'):
